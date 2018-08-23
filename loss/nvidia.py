@@ -100,6 +100,7 @@ def style_out(psis, out, gt, batched = True):
             curr_kn *= x
         curr_kn = 1/curr_kn
 
+        # The @ works as an alias for torch.matmul
         out_gram = curr_out.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])) @
                             curr_out.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])).transpose(1,-1)
         gt_gram = curr_gt.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])) @

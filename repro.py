@@ -11,18 +11,17 @@ from util.junkdrawer import show
 '''
 
 def train(model, args):
-    loader = data.DataLoader(DS(img = 'data/b1/img/', mask ='data/b1/mask/'),
+    loader = data.DataLoader(ds(img = 'data/b1/img/', mask ='data/b1/mask/'),
         batch_size = 6, num_workers = 2, pin_memory = True)
     learning_rate = 0.00005
-
-    optimizer = optim.Adam(['params': model.parameters()], lr = learning_rate)
+    model.train()
+    optimizer = optim.Adam([p for p in  model.parameters()], lr = learning_rate)
 
     loss = loss_func()
     while True:
         ctr = 0
         for i, (images, masks) in enumerate(loader):
-            # apply mask to images
-            preds = model.forward(torch.from_numpy(images), torch.from_numpy(masks))
+            preds = model.forward(images, masks)
             
             optimizer.zero_grad()
             bloss = loss(preds, images, masks)

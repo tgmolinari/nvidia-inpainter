@@ -1,11 +1,13 @@
 import os
+import torch
+import numpy as np
 import torch.utils.data as data
 from skimage import io
 
 class DS(data.Dataset):
     def __init__(self, img, mask, transform = None):
-        self.imgs = os.listdir(img)
-        self.masks = os.listdir(masks)
+        self.imgs = [img + i for i in os.listdir(img)]
+        self.masks = [mask + m for m in os.listdir(mask)]
         self.mlen = len(self.masks)
         self.transform = transform
 
@@ -22,7 +24,12 @@ class DS(data.Dataset):
         mask = io.imread(mask_path)
         img = img / 255
 
-        if transform is not None:
+        if self.transform is not None:
             img = self.transform(img)
+        
+        img = img.transpose((2,0,1))
+        mask = mask.transpose((2,0,1))
+        img = torch.from_numpy(img).type(torch.FloatTensor)
+        mask = torch.from_numpy(mask).type(torch.FloatTensor)
         
         return img, mask
