@@ -1,4 +1,5 @@
 import torch
+import torchvision.models as models
 
 def _expand(tensor):
     # gross helper function to get the 1 pixel dilation of the hole for calculating total variation loss
@@ -38,9 +39,16 @@ def _expand(tensor):
 
     return new_tensor
 
-
-
-
+def _load_vgg(mpath = 'pretrained/vgg16-397923af.pth'):
+    #mpath = 'pretrained/vgg16-397923af.pth'
+    kwar = {'init_weights':False}# save some time!
+    ln = models.vgg16(**kwar)
+    ln.load_state_dict(torch.load(mpath))
+    psi1 = ln.features[:5]
+    psi2 = ln.features[5:10]
+    psi3 = ln.features[10:17]
+    del ln # cleans up about half a gig of mem (determined by: staring at top)
+    return [psi1, psi2, psi3]
 
 def hole(out, gt, mask):
     '''per-pixel loss for the obscured region'''
@@ -65,6 +73,7 @@ def perceptual(out, comp, gt):
         curr_comp = psi(curr_comp)
         content += torch.abs(curr_out - curr_gt)
         style += torch.abs(curr_comp - curr_gt)
+
     return style + content
 
 # Kn is 1/C_n*H_n*K_n (specifying K_n??)
@@ -96,6 +105,7 @@ def style_out(psis, out, gt, batched = True):
         gt_gram = curr_gt.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])) @
                             curr_gt.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])).transpose(1,-1)
         style_outl += torch.abs(curr_kn * (out_gram - gt_gram))
+
     return style_outl
 
 def style_comp(psis, comp, gt, batched = True):
@@ -121,6 +131,7 @@ def style_comp(psis, comp, gt, batched = True):
         gt_gram = curr_gt.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])) @
                             curr_gt.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])).transpose(1,-1)
         style_compl += torch.abs(curr_kn * (comp_gram - gt_gram))
+
     return style_compl
 
 def tv(comp, mask):
@@ -128,7 +139,7 @@ def tv(comp, mask):
     # for each pixel in MASK (invert the mask so the blotted regions are 1s and the unmasked are 0)
     # grab the 1 pixel dilation from composite image
     inverted_mask = 1 - mask
-    expanded_mask = expand(inverted_mask)
+    expanded_mask = _expand(inverted_mask)
     diff_i = torch.zeros(comp.size())
     diff_j = torch.zeros(comp.size())
     diff_j[:, :, :, :-1] = comp[:, :, :, 1:]
@@ -140,3 +151,30 @@ def tv(comp, mask):
     tvl = torch.sum(diff_j + diff_i)
 
     return tvl
+
+
+
+class CompositeLoss(torch.nn.Module):
+    def __init__(self):
+        super(CompositeLoss,self).__init__()
+        self.psis = _load_vgg()
+
+    def forward(self, out, gt, mask, loss_scale = {}):
+        comp = out * mask + gt * (1 - mask)
+        hl = hole(out, gt, mask)
+        vl = valid(out, gt, mask)
+        pl = perceptual(out, comp, gt)
+        sol = style_out(self.psis, out, gt)
+        scl = style_comp(self.psis, comp, gt)
+        tvl = tv(comp, mask)
+
+        if not loss_scale:
+            ls['hole'] = 6
+            ls['valid'] = 1
+            ls['perceptual'] = 0.05
+            ls['style'] = 120
+            ls['tv'] = 0.1
+        else:
+            ls = loss_scale
+
+        return  ls['hole'] * hl + ls['valid'] * vl + ls['perceptual'] * pl + ls['style'] * (sol + scl) + ls['tv'] * tvl

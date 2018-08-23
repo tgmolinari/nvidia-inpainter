@@ -1,18 +1,6 @@
 import torch
 from torch import nn
-import torchvision.models as models
 from partial_conv import NaivePConv2d
-
-def _load_vgg(mpath):
-    #mpath = 'pretrained/vgg16-397923af.pth'
-    kwar = {'init_weights':False}# save some time!
-    ln = models.vgg16(**kwar)
-    ln.load_state_dict(torch.load(mpath))
-    psi1 = ln.features[:5]
-    psi2 = ln.features[5:10]
-    psi3 = ln.features[10:17]
-    del ln # cleans up about half a gig of mem (determined by: staring at top)
-    return psi1, psi2, psi3
 
 class inpainter(nn.Module):
     ''' The Liu et al. (2018) model'''
