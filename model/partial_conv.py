@@ -23,12 +23,14 @@ class NaivePConv2d(torch.nn.Conv2d):# bias false per the karpathy tweet 6/30/18
                 new_mask : updated mask to cover parts of the featuremap that have received a bit of influence from the unobscured parts of 
                             the image
         '''
-        # TODO : Implement pconv style padding 
         assert mask.requires_grad == False
         # performs Equation 2
         new_mask = torch.nn.functional.conv2d(mask, self.mask_filters, stride = self.stride, padding = self.padding)
+        new_mask
         # performs the operation in Equation 1
         f = self.forward((inp*mask))/new_mask
         # after the operation described in Section 3.2 - Implementation, need to set values of sum(M) to 1
-        new_mask[new_mask > 0] = 1
-        return f, new_mask
+        fmask = new_mask.clone()
+        # since we need new_mask for grad calc
+        fmask[fmask > 0] = 1
+        return f, fmask

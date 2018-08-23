@@ -8,8 +8,9 @@ def show(img):
         img = img.int()
         if img.dim() == 4:
             npimg = img.squeeze(0).numpy()
-            img = npimg.transpose((1,2,0))
         else:
-            img = img.numpy()
-    
+            npimg = img.numpy()
+
+        img = npimg.transpose((1,2,0))
+
     plt.imshow(img, interpolation='nearest')
