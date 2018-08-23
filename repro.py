@@ -6,9 +6,7 @@ from util.data import DS as ds
 from model.base import inpainter
 from loss.nvidia import CompositeLoss as loss_func
 from util.junkdrawer import show
-'''Initial thoughts re: naming convention and folder structure, gonna need to get a data loader working
-    this'll be the __main__ for all of our effort!!!!!!!!!!!!!!!!!!!!!!!!
-'''
+
 # TODO - ensure model is wired properly
 #      - tensorboard logging
 #      - model persistence
@@ -23,19 +21,19 @@ def train(model, args):
 
     loss = loss_func()
     ctr = 0
-    
+
     while True:
         for i, (images, masks, emasks) in enumerate(loader):
 
             preds = model.forward(images, masks)
-            
+
             optimizer.zero_grad()
             bloss = loss(preds, images, masks, emasks)
             bloss.backward()
             optimizer.step()
-            
+
             ctr += 1
-            
+
             if ctr % 20 == 0:
                 print('writing first ', str(ctr), ' to disk')
                 torch.save(preds, 'curr_preds' + str(ctr) + '.pt')

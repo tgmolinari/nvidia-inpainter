@@ -1,5 +1,12 @@
 # project specific omissions
-training/
+b1/
+*.git*
+
+# pretrained & saved models
+*.pth
+
+# tensor dumps
+*.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
