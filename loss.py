@@ -126,6 +126,7 @@ def style_comp(psis, comp, gt, batched = True):
             curr_kn *= x
         curr_kn = 1/curr_kn
 
+        # The @ works as an alias for torch.matmul
         comp_gram = curr_comp.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])) @
                             curr_comp.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])).transpose(1,-1)
         gt_gram = curr_gt.view_as(torch.rand(1,sizes[0],sizes[1]*sizes[1])) @
@@ -155,11 +156,16 @@ def tv(comp, mask):
 
 
 class CompositeLoss(torch.nn.Module):
+    '''Composite loss as described in Liu et al. 2018'''
+    # should we apply the correct imagenet noramlization if we intend to use the pretrained vgg 16 to create the Grammian matrices?
+
     def __init__(self):
         super(CompositeLoss,self).__init__()
         self.psis = _load_vgg()
 
-    def forward(self, out, gt, mask, loss_scale = {}):
+    def forward(self, out, gt, mask, 
+            loss_scale = {'hole':6, 'valid':1, 'perceptual':0.05, 'style':120, 'tv':0.1}):
+
         comp = out * mask + gt * (1 - mask)
         hl = hole(out, gt, mask)
         vl = valid(out, gt, mask)
@@ -177,4 +183,5 @@ class CompositeLoss(torch.nn.Module):
         else:
             ls = loss_scale
 
-        return  ls['hole'] * hl + ls['valid'] * vl + ls['perceptual'] * pl + ls['style'] * (sol + scl) + ls['tv'] * tvl
+        return  loss_scale['hole'] * hl + loss_scale['valid'] * vl + loss_scale['perceptual'] * pl \
+                + loss_scale['style'] * (sol + scl) + loss_scale['tv'] * tvl
