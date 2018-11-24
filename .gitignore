@@ -112,3 +112,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# vscode
+.vscode
+
+# jupyter nb
+.ipynb

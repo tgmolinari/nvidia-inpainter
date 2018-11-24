@@ -1,30 +1,35 @@
 import torch
-import torch.optim as optim
-import torch.utils.data as data
+from torch import optim
+from torch.utils import data
 
 from util.data import DS as ds
-from model.base import inpainter
+from model.base import Inpainter
 from loss.nvidia import CompositeLoss as loss_func
-from util.junkdrawer import show
 
-# TODO - ensure model is wired properly
+#      - ensure model is wired properly
 #      - tensorboard logging
 #      - model persistence
 #      - mask dataset generation
 
 def train(model, args):
-    loader = data.DataLoader(ds(img = 'data/b1/img/', mask ='data/b1/mask/'),
-        batch_size = 2, num_workers = 1, pin_memory = False)
-    learning_rate = 0.00005
+    """ training loop
+        Input
+        ------
+            model - the model architecture to train on
+            args - hyperparams for our model
+
+        set up our data loader, toggle the model to train, and roll through a few epochs
+    """
+    loader = data.DataLoader(ds(img='data/b1/img/', mask='data/b1/mask/'),
+                             batch_size=2, num_workers=1, pin_memory=False)
     model.train()
-    optimizer = optim.Adam([p for p in  model.parameters()], lr = learning_rate)
+    optimizer = optim.Adam([p for p in  model.parameters()], lr=args['learning_rate'])
 
     loss = loss_func()
     ctr = 0
 
     while True:
-        for i, (images, masks, emasks) in enumerate(loader):
-
+        for images, masks, emasks in loader:
             preds = model.forward(images, masks)
 
             optimizer.zero_grad()
@@ -40,8 +45,8 @@ def train(model, args):
 
 
 if __name__ == '__main__':
-    model = inpainter()
-    model.init_weights()
-    args = {}
+    MODEL = Inpainter()
+    MODEL.init_weights()
+    ARGS = {'learning_rate' : 0.00005}
 
-    train(model, args)
+    train(MODEL, ARGS)
