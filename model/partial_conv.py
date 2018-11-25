@@ -4,7 +4,7 @@ class NaivePConv2d(torch.nn.Conv2d):# bias false per the karpathy tweet 6/30/18
     """A partial convolution layer, implemented from Liu et al (2018)"""
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=False):
         super().__init__(in_channels=in_channels, out_channels=out_channels,
-                         kernel_size=kernel_size, stride=stride, padding=padding,
+                         kernel_size=kernel_size, stride=stride, padding=0,
                          dilation=dilation, groups=groups, bias=bias)
         self.mask_filters = torch.ones(out_channels, in_channels, kernel_size, kernel_size)
         self.pad = padding
@@ -26,8 +26,8 @@ class NaivePConv2d(torch.nn.Conv2d):# bias false per the karpathy tweet 6/30/18
         """
         assert mask.requires_grad is False
         if self.pad:
-            mask = torch.nn.functional.pad(mask, (self.pad, 0, self.pad, 0), 'reflect')
-            inp = torch.nn.functional.pad(inp, (self.pad, 0, self.pad, 0), 'reflect')
+            mask = torch.nn.functional.pad(mask, (self.pad, self.pad, self.pad, self.pad), 'reflect')
+            inp = torch.nn.functional.pad(inp, (self.pad, self.pad, self.pad, self.pad), 'reflect')
         # performs Equation 2
         new_mask = torch.nn.functional.conv2d(mask, self.mask_filters, stride=self.stride, padding=self.padding)
         # performs the operation in Equation 1
