@@ -1,3 +1,4 @@
+""" the main script for reproducing the paper """
 import torch
 from torch import optim
 from torch.utils import data
@@ -47,6 +48,6 @@ def train(model, args):
 if __name__ == '__main__':
     MODEL = Inpainter()
     MODEL.init_weights()
-    ARGS = {'learning_rate' : 0.00005}
+    ARGS = {'learning_rate' : 0.0002}
 
     train(MODEL, ARGS)

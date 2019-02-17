@@ -12,15 +12,15 @@ def _load_vgg(mpath = 'pretrained/vgg16-397923af.pth'):
     return [psi1, psi2, psi3]
 
 def hole(out, gt, mask):
-    '''per-pixel loss for the obscured region'''
+    """per-pixel loss for the obscured region"""
     return torch.sum(torch.abs((1 - mask) * (out - gt)))
 
 def valid(out, gt, mask):
-    '''per-pixel loss for the unobscured region'''
+    """per-pixel loss for the unobscured region"""
     return torch.sum(torch.abs(mask * (out - gt)))
 
 def perceptual(psis, out, comp, gt):
-    '''perceptual loss, as defined by Gatys et al. (2015)'''
+    """perceptual loss, as defined by Gatys et al. (2015)"""
     # following Gatys convention, not strictly obvious to me which is content and which is style
     # check that these are only passing the tensor values and not the reference, if it's the ref then we're goofing subsequent loss calcs
     curr_out = out
@@ -44,7 +44,7 @@ def perceptual(psis, out, comp, gt):
 # tensor.transpose(1,-1)
 
 def style_out(psis, out, gt, batched = True):
-    '''Gram auto-correlative style loss, from Johnson et al. (2016) for the raw output image
+    """Gram auto-correlative style loss, from Johnson et al. (2016) for the raw output image
        Assumes batched (4D) input
        
        Follows Equation (4) in the paper
@@ -60,7 +60,7 @@ def style_out(psis, out, gt, batched = True):
            get the ground truth's Grammian
            take the L_1 between the Grams, normalize by K, add to the loss term
        return our loss!
-    '''
+    """
     curr_out = out
     curr_gt = gt
     style_outl = 0
@@ -83,7 +83,7 @@ def style_out(psis, out, gt, batched = True):
     return style_outl
 
 def style_comp(psis, comp, gt, batched = True):
-    '''Gram auto-correlative style loss, from Johnson et al. (2016) for the composited output image
+    """Gram auto-correlative style loss, from Johnson et al. (2016) for the composited output image
        
        Follows Equation (5) in the paper
        
@@ -97,7 +97,7 @@ def style_comp(psis, comp, gt, batched = True):
            get the ground truth's Grammian
            take the L_1 between the Grams, normalize by K, add to the loss term
        return our loss!
-    '''
+    """
     curr_comp = comp
     curr_gt = gt
     style_compl = 0
@@ -120,7 +120,7 @@ def style_comp(psis, comp, gt, batched = True):
     return style_compl
 
 def tv(comp, mask, expanded_mask):
-    ''' The total variation loss, calculated over the obscured region dilated by an additional pixel '''
+    """ The total variation loss, calculated over the obscured region dilated by an additional pixel """
     # for each pixel in MASK (invert the mask so the blotted regions are 1s and the unmasked are 0)
     # grab the 1 pixel dilation from composite image
     inverted_mask = 1 - mask
@@ -139,10 +139,10 @@ def tv(comp, mask, expanded_mask):
 
 
 class CompositeLoss(torch.nn.Module):
-    '''Composite loss as described in Liu et al. 2018'''
+    """Composite loss as described in Liu et al. 2018"""
     # should we apply the correct imagenet noramlization if we intend to use the pretrained vgg 16 to create the Grammian matrices?
 
-    def __init__(self, loss_scale = {'hole':6, 'valid':1, 'perceptual':0.05, 'style':120, 'tv':0.1}):
+    def __init__(self, loss_scale = {'hole' : 6, 'valid' : 1, 'perceptual' : 0.05, 'style' : 120, 'tv' : 0.1}):
         super(CompositeLoss,self).__init__()
         self.psis = _load_vgg()
         self.loss_scale = loss_scale
@@ -150,12 +150,12 @@ class CompositeLoss(torch.nn.Module):
     def forward(self, out, gt, mask, emask):
 
         comp = out * mask + gt * (1 - mask)
-        hl = hole(out, gt, mask)
-        vl = valid(out, gt, mask)
-        pl = perceptual(self.psis, out, comp, gt)
+        hl = hole(out, gt, mask) * self.loss_scale['hole']
+        vl = valid(out, gt, mask) * self.loss_scale['valid']
+        pl = perceptual(self.psis, out, comp, gt) * self.loss_scale['perceptual']
         sol = style_out(self.psis, out, gt)
         scl = style_comp(self.psis, comp, gt)
-        tvl = tv(comp, mask, emask)
+        stl = (sol + scl) * self.loss_scale['style']
+        tvl = tv(comp, mask, emask) * self.loss_scale['tv']
 
-        return  self.loss_scale['hole'] * hl + self.loss_scale['valid'] * vl + self.loss_scale['perceptual'] * \
-                pl + self.loss_scale['style'] * (sol + scl) + self.loss_scale['tv'] * tvl
+        return  hl + vl + pl + stl +  tvl

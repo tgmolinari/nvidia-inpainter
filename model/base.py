@@ -1,7 +1,8 @@
+""" base model, follows Table 2 in the paper """
 import torch
 from torch import nn
 from torch.nn.functional import interpolate
-from model.partial_conv import NaivePConv2d
+from model.partial_conv import PConv2d
 
 class Inpainter(nn.Module):
     """ The Liu et al. (2018) model"""
@@ -12,39 +13,39 @@ class Inpainter(nn.Module):
         self.hot = False
 
         # encoder
-        self.pconv1 = NaivePConv2d(3, 64, 7, stride=2, padding=3, bias=True)
-        self.pconv2 = NaivePConv2d(64, 128, 5, stride=2, padding=2)
+        self.pconv1 = PConv2d(3, 64, 7, stride=2, padding=3, bias=True)
+        self.pconv2 = PConv2d(64, 128, 5, stride=2, padding=2)
         self.en_bn2 = nn.BatchNorm2d(128)
-        self.pconv3 = NaivePConv2d(128, 256, 5, stride=2, padding=2)
+        self.pconv3 = PConv2d(128, 256, 5, stride=2, padding=2)
         self.en_bn3 = nn.BatchNorm2d(256)
-        self.pconv4 = NaivePConv2d(256, 512, 3, stride=2, padding=1)
+        self.pconv4 = PConv2d(256, 512, 3, stride=2, padding=1)
         self.en_bn4 = nn.BatchNorm2d(512)
-        self.pconv5 = NaivePConv2d(512, 512, 3, stride=2, padding=1)
+        self.pconv5 = PConv2d(512, 512, 3, stride=2, padding=1)
         self.en_bn5 = nn.BatchNorm2d(512)
-        self.pconv6 = NaivePConv2d(512, 512, 3, stride=2, padding=1)
+        self.pconv6 = PConv2d(512, 512, 3, stride=2, padding=1)
         self.en_bn6 = nn.BatchNorm2d(512)
-        self.pconv7 = NaivePConv2d(512, 512, 3, stride=2, padding=1)
+        self.pconv7 = PConv2d(512, 512, 3, stride=2, padding=1)
         self.en_bn7 = nn.BatchNorm2d(512)
-        self.pconv8 = NaivePConv2d(512, 512, 3, stride=2, padding=1)
+        self.pconv8 = PConv2d(512, 512, 3, stride=2, padding=1)
         self.en_bn8 = nn.BatchNorm2d(512)
 
 
         # decoder, input channels following paper architecture convention
-        self.pconv9 = NaivePConv2d(512 + 512, 512, 3, padding=1)
+        self.pconv9 = PConv2d(512 + 512, 512, 3, padding=1)
         self.de_bn9 = nn.BatchNorm2d(512)
-        self.pconv10 = NaivePConv2d(512 + 512, 512, 3, padding=1)
+        self.pconv10 = PConv2d(512 + 512, 512, 3, padding=1)
         self.de_bn10 = nn.BatchNorm2d(512)
-        self.pconv11 = NaivePConv2d(512 + 512, 512, 3, padding=1)
+        self.pconv11 = PConv2d(512 + 512, 512, 3, padding=1)
         self.de_bn11 = nn.BatchNorm2d(512)
-        self.pconv12 = NaivePConv2d(512 + 512, 512, 3, padding=1)
+        self.pconv12 = PConv2d(512 + 512, 512, 3, padding=1)
         self.de_bn12 = nn.BatchNorm2d(512)
-        self.pconv13 = NaivePConv2d(512 + 256, 256, 3, padding=1)
+        self.pconv13 = PConv2d(512 + 256, 256, 3, padding=1)
         self.de_bn13 = nn.BatchNorm2d(256)
-        self.pconv14 = NaivePConv2d(256 + 128, 128, 3, padding=1)
+        self.pconv14 = PConv2d(256 + 128, 128, 3, padding=1)
         self.de_bn14 = nn.BatchNorm2d(128)
-        self.pconv15 = NaivePConv2d(128 + 64, 64, 3, padding=1)
+        self.pconv15 = PConv2d(128 + 64, 64, 3, padding=1)
         self.de_bn15 = nn.BatchNorm2d(64)
-        self.pconv16 = NaivePConv2d(64 + 3, 3, 3, padding=1, bias=True)
+        self.pconv16 = PConv2d(64 + 3, 3, 3, padding=1, bias=True)
 
 
     def forward(self, inp, mask):
@@ -117,17 +118,19 @@ class Inpainter(nn.Module):
         return x
 
     def init_weights(self):
-        """kaiming_normal the weights for each p conv layer"""
+        """ kaiming_normal the weights for each partial conv layer """
         for name, child in self.named_children():
             if 'pconv' in name:
                 nn.init.kaiming_normal_(child.weight)
         return None
 
     def toggle_hot_start(self):
+        """ toggle for the hot start described in 4.2 Initial Training and Fine-Tuning """
         if self.hot:
             self.hot = False
             for name, child in self.named_children():
                 if 'en_bn' in name:
-                    child.track_running_stats = False # check this actually works after you flip the switch!
+                    # check this actually works after you flip the switch!
+                    child.track_running_stats = False
         else:
             self.hot = True

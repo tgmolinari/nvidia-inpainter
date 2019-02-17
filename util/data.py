@@ -86,10 +86,12 @@ class DS(data.Dataset):
         img_path = self.imgs[index]
         mask_path = self.masks[np.random.randint(0, self.mlen)]
         img = io.imread(img_path)
+        # since resize appears to normalize for us
         if img.shape[0] != img.shape[1] and img.shape[0] != 512:
             img = imtransform.resize(img, (512, 512), mode='constant', anti_aliasing=True)
+        else:
+            img = img / 255
         mask = io.imread(mask_path)
-        img = img / 255
 
         if self.transform is not None:
             img = self.transform(img)
