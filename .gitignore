@@ -1,6 +1,7 @@
 # project specific omissions
 b1/
-*.git*
+*.env
+*.ipynb
 
 # pretrained & saved models
 *.pth
@@ -116,5 +117,3 @@ venv.bak/
 # vscode
 .vscode
 
-# jupyter nb
-.ipynb
